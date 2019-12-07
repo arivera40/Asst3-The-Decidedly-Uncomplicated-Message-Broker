@@ -1,15 +1,14 @@
 #ifndef utilities_H
 #define utilities_H
 
-typedef struct _node{
-	//char* name;
-	//double value;
-	//int serving;
-	//struct _node* next;
-} node;
+typedef struct _Node{
+	int clientSocket;
+	int threadID;
+	struct _node* next;
+} Node;
 
 typedef struct _Arguments{
-	int serverSocket;
+	int clientSocket;
 	struct sockaddr* serverAddr;
 	socklen_t* addrSize;
 } Arguments;

@@ -11,15 +11,14 @@
 #include "utilities.h"
 
 int index = 0;
-pthread_t threads[256];
-int sockets[256];
-int killFlag;
+Node *head = NULL; //Keeps track of client connections
+int killFlag = 0;
 //Server forms the listener socket while client reaches out to the server
-void listener(void* socket_fd){
-	
+void commandHandler(void* args){
+	Arguments *arguments = (Arguments*)args;
 }
 
-void killHandler(void* args){	//args contains: serverSocket, serverAddress, addressSize
+void clientHandler(int serverSocket, int serverAddr, int addrlen){	//args contains: serverSocket, serverAddress, addressSize
 	//signal to end program incomplete	
 	struct sigaction flag;	
 	struct itimerval timer;
@@ -32,7 +31,32 @@ void killHandler(void* args){	//args contains: serverSocket, serverAddress, addr
 	timer.it_interval.tv_usec = 15;
 	setitimer(ITIMER_REAL, &timer, NULL);
 	//--------------------------------
-	
+	int clientSocket;
+	int threadID;
+	while(killFlag == 0){
+		if((clientSocket = accept(serverSocket, serverAddr, addrlen)) < 0){
+			perror("Accept");
+			exit(EXIT_FAILURE);
+		}
+		Node *threadNode = (Node*)malloc(sizeof(node));
+		Arguments *args = (Arguments*)malloc(sizeof(int));
+		args->clientSocket = clientSocket;
+		if((pthread_create(&threadID, NULL, commandHandler, (void*)args)) != 0){
+			perror("Listener");
+			exit(EXIT_FAILURE);
+		}
+		threadNode->threadID = threadID;
+		threadNode->clientSocket = clientSocket;
+		//threadNode list used to keep track of individual client requests and more importantly to join all threads at the end
+		if(head == NULL){
+			head = threadNode;
+		}else{
+			Node *ptr;
+			for(ptr = head; ptr->next != NULL; ptr = ptr->next){
+			}
+			ptr->next = threadNode;	
+		}
+	}
 }
 
 int main(int argc, char** argv){
@@ -85,21 +109,5 @@ int main(int argc, char** argv){
 	acceptArgs->serverAddr = (struct sockaddr*)&serverAddr;
 	acceptArgs->addrSize = (socklen_t*)&addrlen;
 	pthread_t mainThread;	//may decide to change name
-	if(pthread_create(&mainThread, NULL, (void*)killHandler, (void*)acceptArgs) != 0){
-		//error
-	}
-/*	while(1){
-		if((clientSocket = accept(serverSocket, acceptArgs->serverAddr, acceptArgs->addrSize)) < 0){
-			perror("Accept session thread creation");
-			exit(EXIT_FAILURE);
-		}
-		commandArgs args = (commandArgs*)malloc(sizeof(commandArgs);
-		args->clientSocket = clientSocket;
-		if(pthread_create(&threads[index], NULL, (void*)commands, (void*)args) != 0){
-			perror("Listener");
-			exit(EXIT_FAILURE);
-		}
-		index++;
-	}	*/
-	
+	clientHandler(serverSocket, serverAddr, addrlen);
 }

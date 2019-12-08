@@ -13,9 +13,295 @@
 int index = 0;
 Node *head = NULL; //Keeps track of client connections
 int killFlag = 0;
+int connections = 0;
+messageBox *boxHead = NULL;
+
+void close(int clientSocket, char *name){
+	messageBox *boxPtr;
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+		if(strcmp(boxPtr->name, name) == 0){
+			boxPtr->open = -1;
+			break;
+		}
+	}
+	return;
+}
+
+int delete(int clientSocket, char *name){
+	if(strcmp(boxHead->name, name) == 0){
+		if(boxHead->message != NULL){
+			return -1;
+		}else{
+			messageBox *temp = boxHead;
+			boxHead = boxHead->next_box;
+			free(temp);
+			return 1;
+		}
+	}
+	messageBox prevPtr = NULL;
+	messageBox ptr = boxHead;
+	while(strcmp(ptr->name, name) != 0){
+		prevPtr = ptr;
+		ptr = ptr->next_box;
+	}
+	prevPtr->next_box = ptr->next_box;
+	free(ptr);
+	return 1;
+}
+
+void put(int clientSocket, int length, char *text, char *name){
+	messageBox *boxPtr;
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+		if(strcmp(boxPtr->name, name) == 0){
+			Message *msgPtr;
+			for(msgPtr = boxPtr->message; msgPtr->next != NULL; msgPtr = msgPtr->next){
+			}
+			Message *newMessage = (Message*)malloc(sizeof(Message));
+			newMessage->text = text;
+			newMessage->length = length;
+			newMessage->next_msg = NULL;
+			msgPtr->next = newMessage;
+			break;
+		}
+	}
+	return;
+}
+//(-1): incorrect format
+int putFormatCheck(char *arg0, char *arg1){
+	int i;
+	for(i=0; i < strlen(arg0); i++){
+		if(isdigit(arg0[i]) == 0) return -1;
+	}
+	if(atoi(arg0) != strlen(arg1)) return -1;
+	return 1;
+}
+
+Message* next(int clientSocket, char *name){
+	messageBox *boxPtr;
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+		if(strcmp(boxPtr->name, name) == 0){
+			if(boxPtr->message != NULL){
+				Message *msgPtr = boxPtr->message;
+				boxPtr->message = boxPtr->message->next_msg;
+				return msgPtr;
+			}else{
+				break;
+			}
+		}
+	}
+	return NULL;
+}
+
+void open(int clientSocket, char *name){
+	messageBox *boxPtr;
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+		if(strcmp(boxPtr->name, name) == 0){
+			boxPtr->open = 1;
+			break;
+		}
+	}
+	return;
+}
+
+//(-2): invalid name, (-1): message box exists but its open, (0): message box exists and its closed, (1): message box does not exist
+int validName(char *name, int length){
+	if(length < 5 || length > 25) return -2;
+	if(!((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'))) return -2;
+	messageBox *boxPtr;
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){	//Checks if message box already exists
+		if(strcmp(boxPtr->name, name) == 0){
+			if(boxPtr->open == 1){
+				return -1;	
+			}else{
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
+void create(int clientSocket, char *name){
+	messageBox *newBox = (messageBox*)malloc(sizeof(messageBox));
+	newBox->name = name;
+	newBox->open = -1;
+	newBox->message = NULL;
+	newBox->next_box = boxHead;
+	boxHead = newBox;
+}
+
 //Server forms the listener socket while client reaches out to the server
 void commandHandler(void* args){
 	Arguments *arguments = (Arguments*)args;
+	
+	int msgLength = 0;
+	char buffer[1024] = {0};
+	char* confirmation = "HELLO DUMBv0 ready!\n";
+
+	send(arguments->clientSocket, buffer, 0);
+	msgLength = recv(arguments->clientSocket, buffer, 1024, 0);
+	buffer[msgLength] = '\0';
+	printf("%s", buffer);
+	connections++;
+
+	int open = -1;	//keeps track of box open(1) or closed(-1)
+	char *currentOpenBox = "";
+	char cmd[256] = {0};
+	char arg0[256] = {0};
+	char arg1[256] = {0};
+	char *response = "";
+	while(killFlag == 0){
+		//receives command from client and puts it in buffer
+		msgLength = recv(arguments->clientSocket, buffer, 1024, 0);
+		//removes \n included in msgLength
+		msgLength = msgLength-1;
+		buffer[msgLength] = '\0';
+		//resets cmd and msg strings for next iteration
+		memset(cmd, 0, sizeof(cmd));
+		memset(arg0, 0, sizeof(arg0));
+		memset(arg1, 0, sizeof(arg1));
+		//copies cmd from buffer
+		int i = 0;
+		for(i=0; i < msgLength; i++){
+			if(buffer[i] == ' ' || buffer[i] == '!'){
+				break;
+			}
+			cmd[i] = buffer[i];
+		}
+		cmd[i] = '\0';
+		//copies arg0 if present after cmd
+		if(i != msgLength){
+			int j;
+			int k = 0;
+			for(j=i+1; j < msgLength; j++){	
+				if(buffer[j] == '!'){
+					break;
+				}
+				arg0[k] = buffer[j];
+				k++;
+			}
+			arg[k] = '\0';
+			//copies arg1 if present after arg0
+			if(j != msgLength){
+				int l;
+				int m = 0;
+				for(l = j+1; l < msgLength-1; l++){	//msgLength-1 to exclude trailing ! in put cmd
+					arg1[m] = buffer[l];
+					m++;
+				}
+				arg1[m] = '\0';
+			}
+		}
+		if(strcmp(cmd, "quit") == 0){	//E.1
+			//client expects no response text from server, since the server should close the connection
+			//The server should close the client's open message box, if the user had one and did not close it before disconnecting
+			if(open == 1){
+				close(arguments->clientSocket, currentOpenBox);
+			} 
+			close(arguments->clientSocket);	//not sure if this disconnects the client
+			return;
+		}else if(strcmp(cmd, "create") == 0){	//E.2
+			int valid = validName(arg0, k);
+			if(valid == -2){	//Incorrect format
+				response = "ER:WHAT?";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}else if(valid == -1 || valid == 0){	//Message Box already exists
+				response = "ER:EXIST\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}else{
+				create(arguments->clientSocket, arg0);
+				response = "OK!\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}
+		}else if(strcmp(cmd, "open") == 0){	//E.3
+			int valid = validName(arg0, k);
+			if(valid == -2){
+				response = "ER:WHAT?\n";
+				send(arguments->clientSocket, response, strlen(response), 0);	
+			}else if(valid == -1){	//this means message box exists but it is open by another client
+				response = "ER:OPEND\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}else if(valid == 0){	//Good, this means message box exists and its closed 
+				open(arguments->clientSocket, arg0);
+				response = "OK!\n";
+				open = 1;
+				currentOpenBox = arg0;
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}else{	//this means message box does not exist
+				response = "ER:NEXST\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}
+		}else if(strcmp(cmd, "next") == 0){	//E.4
+			if(open == 1){
+				Message *message;
+				if((message = next(arguments->clientSocket, currentOpenBox)) == NULL){
+					response = "ER:EMPTY\n";
+					send(arguments->clientSocket, response, strlen(response), 0);
+				}else{
+					response = "OK!%d!%s";	//Need to figure out how to format response for length and string
+					send(arguments->clientSocket, response, strlen(response), 0);
+					free(message);
+				}
+			}else{
+				response = "ER:NOOPN\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}
+		}else if(strcmp(cmd, "put") == 0){	//E.5
+			if(open == 1){
+				int format = putFormatCheck(arg0, arg1);
+				if(format == -1){
+					response = "ER:WHAT?\n";
+					send(arguments->clientSocket, response, strlen(response), 0);
+				}else{
+					put(arguments->clientSocket, atoi(arg0), arg1, currentOpenBox);
+					response = "OK!%d\n";
+					send(arguments->clientSocket, response, strlen(response), 0);
+				}
+			}else{
+				response = "ER:NOOPN\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}
+		}else if(strcmp(cmd, "delete") == 0){	//E.6
+			int valid = validName(arg0, k);
+			if(valid == -2){
+				response = "ER:WHAT?\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}else if(valid == -1){
+				response = "ER:OPEND\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}else if(valid == 0){
+				if((delete(arguments->clientSocket, arg0)) == -1){
+					response = "ER:NOTMT\n";
+					send(arguments->clientSocket, response, strlen(response), 0);
+				}else{
+					response = "OK!\n";
+					send(arguments->clientSocket, response, strlen(response), 0);
+				}
+			}else{
+				response = "ER:NEXST\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}
+		}else if(strcmp(cmd, "close") == 0){	//E.7
+			if(open == 1){
+				if(strcmp(arg0, currentOpenBox) == 0){
+					close(arguments->clientSocket, currentOpenBox);
+					currentOpenBox = "";
+					open = -1;
+					response = "OK!\n";
+					send(arguments->clientSocket, response, strlen(response), 0);
+				}else{
+					response = "ER:NOOPN\n";
+					send(arguments->clientSocket, response, strlen(response), 0);
+				}
+			}else{
+				response = "ER:NOOPN\n";
+				send(arguments->clientSocket, response, strlen(response), 0);
+			}
+		}else{
+			response = "ER:WHAT?\n";
+			send(arguments->clientSocket, response, strlen(response), 0);
+		}
+	}
+	return;
 }
 
 void clientHandler(int serverSocket, int serverAddr, int addrlen){	//args contains: serverSocket, serverAddress, addressSize
@@ -108,6 +394,5 @@ int main(int argc, char** argv){
 	acceptArgs->serverSocket = serverSocket;
 	acceptArgs->serverAddr = (struct sockaddr*)&serverAddr;
 	acceptArgs->addrSize = (socklen_t*)&addrlen;
-	pthread_t mainThread;	//may decide to change name
 	clientHandler(serverSocket, serverAddr, addrlen);
 }

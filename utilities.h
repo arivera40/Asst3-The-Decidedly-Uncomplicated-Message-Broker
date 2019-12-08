@@ -7,18 +7,22 @@ typedef struct _Node{
 	struct _node* next;
 } Node;
 
-typedef struct _Arguments{
-	int clientSocket;
-	struct sockaddr* serverAddr;
-	socklen_t* addrSize;
-} Arguments;
+typedef struct _Message{
+	char* text;
+	int length;
+	struct _Message* next_msg;
+} Message;
+
+typedef struct _messageBox{
+	char *name;
+	int open;
+	struct _Message message;
+	struct _messageBox* next_box;
+} _messageBox;
 
 typedef struct _commandArgs{
 	int clientSocket;
 } commandArgs;
 
-typedef struct _sfdPill{
-	//int sfd;
-} sfdPill;
 
 #endif

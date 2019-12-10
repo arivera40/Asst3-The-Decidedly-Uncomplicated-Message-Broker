@@ -4,7 +4,7 @@
 typedef struct _Node{
 	int clientSocket;
 	int threadID;
-	struct _node* next;
+	struct _Node* next;
 } Node;
 
 typedef struct _Message{
@@ -16,9 +16,9 @@ typedef struct _Message{
 typedef struct _messageBox{
 	char *name;
 	int open;
-	struct _Message message;
+	struct _Message* message;
 	struct _messageBox* next_box;
-} _messageBox;
+} messageBox;
 
 typedef struct _commandArgs{
 	int clientSocket;

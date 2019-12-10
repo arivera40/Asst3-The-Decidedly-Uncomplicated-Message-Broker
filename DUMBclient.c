@@ -21,7 +21,7 @@ void commands(int sockfd){
 		char message[4000];
 		int recvSocket = 0;
 		
-		printf("Please type in command");
+		printf("Please type in command\n");
 		scanf("%s", commandInput); //scans in input and adds correct #of bytes and add '\0' at the end
 		if(strcmp("quit", commandInput) == 0){
 			strcpy(serverCommands, "GDBYE");
@@ -49,7 +49,7 @@ void commands(int sockfd){
 			recvSocket = send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(recvSocket, 3); //
 		}else if(strcmp("put", commandInput)== 0){ // put message
-			printf("What message do you want to put?");
+			printf("What message do you want to put?\n");
 			read(0, message, sizeof(message));
 			int sizeOfMessage = sizeof(message);
 			char number [15];
@@ -67,7 +67,7 @@ void commands(int sockfd){
 			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
 			checkError(recvSocket, 4);
 		}else if(strcmp("delete", commandInput) == 0){ // delete mailbox
-			printf("Which mailbox do you want to delete?");
+			printf("Which mailbox do you want to delete?\n");
 			read(0, mailboxName, sizeof(mailboxName));
 			strcpy(serverCommands, "DELBX!");
 			strcpy(&serverCommands[6], mailboxName);
@@ -75,7 +75,7 @@ void commands(int sockfd){
 			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
 			checkError(recvSocket, 5);
 		}else if(strcmp("close", commandInput) == 0){ //close mailbox
-			printf("Which mailbox do you want to close?");
+			printf("Which mailbox do you want to close?\n");
 			read(0, mailboxName, sizeof(mailboxName));
 			strcpy(serverCommands, "CLSBX!");
 			strcpy(&serverCommands[6], mailboxName);
@@ -83,10 +83,10 @@ void commands(int sockfd){
 			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
 			checkError(recvSocket, 6);
 		} else if(strcmp("help", commandInput) == 0){
-			printf("Here are the commands you can type");
+			printf("Here are the commands you can type\n");
 			printf("quit\ncreate\ndelete\nopen\nclose\nnext\nput\n");
 		}else{
-			printf("Unknown command. Please try again");
+			printf("Unknown command. Please try again\n");
 		}
 		
 	}
@@ -206,7 +206,11 @@ int main(int argc, char** argv){
 	//bzero(&address, sizeof(address));
 	address.sin_family = AF_INET;
 	address.sin_port = htons(atoi(argv[2]));
-	address.sin_addr.s_addr = inet_addr(argv[1]);
+	if(inet_pton(AF_INET, argv[1], &address.sin_addr)<=0){
+		printf("\nInvalid address/ Address not supported \n");
+		return -1;
+	}
+	//address.sin_addr.s_addr = inet_addr(argv[1]);
 	
 	//check for connection errors
 	if(connect(sockfd, (struct sockaddr*)&address, sizeof(address))<0){

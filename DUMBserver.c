@@ -142,8 +142,8 @@ void commandHandler(void* args){
 	char buffer[1024] = {0};
 	char* confirmation = "HELLO DUMBv0 ready!\n";
 
-	send(arguments->clientSocket, confirmation, strlen(confirmation), 0);
 	msgLength = recv(arguments->clientSocket, buffer, 1024, 0);
+	send(arguments->clientSocket, confirmation, strlen(confirmation), 0);
 	buffer[msgLength] = '\0';
 	printf("%s", buffer);
 	connections++;
@@ -370,7 +370,7 @@ int main(int argc, char** argv){
 		perror("setsockopt");
 		exit(EXIT_FAILURE);
 	}
-	
+	//bzero((char*)&serverAddr, sizeof(serverAddr));
 	//**Set socket ruleset**
 	//Address family = Internet
 	serverAddr.sin_family = AF_INET;//Sockets created with the socket()function are inititally unnamed they are identified by their address family
@@ -391,6 +391,7 @@ int main(int argc, char** argv){
 		perror("Listen");
 		exit(EXIT_FAILURE);
 	}
+	printf("listening...\n");
 	
 	clientHandler(serverSocket, serverAddr, addrlen);
 	return 0;

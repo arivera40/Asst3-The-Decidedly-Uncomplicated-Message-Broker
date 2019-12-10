@@ -8,17 +8,22 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <semaphore.h>
+#include <ctype.h>
 #include "utilities.h"
 
-int index = 0;
 Node *head = NULL; //Keeps track of client connections
 int killFlag = 0;
 int connections = 0;
 messageBox *boxHead = NULL;
+Node *threadHead = NULL;
 
-void close(int clientSocket, char *name){
+void sighandler(int signum){
+	exit(1);
+}
+
+void closeBox(int clientSocket, char *name){
 	messageBox *boxPtr;
-	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
 		if(strcmp(boxPtr->name, name) == 0){
 			boxPtr->open = -1;
 			break;
@@ -38,8 +43,8 @@ int delete(int clientSocket, char *name){
 			return 1;
 		}
 	}
-	messageBox prevPtr = NULL;
-	messageBox ptr = boxHead;
+	messageBox *prevPtr = NULL;
+	messageBox *ptr = boxHead;
 	while(strcmp(ptr->name, name) != 0){
 		prevPtr = ptr;
 		ptr = ptr->next_box;
@@ -51,16 +56,16 @@ int delete(int clientSocket, char *name){
 
 void put(int clientSocket, int length, char *text, char *name){
 	messageBox *boxPtr;
-	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
 		if(strcmp(boxPtr->name, name) == 0){
 			Message *msgPtr;
-			for(msgPtr = boxPtr->message; msgPtr->next != NULL; msgPtr = msgPtr->next){
+			for(msgPtr = boxPtr->message; msgPtr->next_msg != NULL; msgPtr = msgPtr->next_msg){
 			}
 			Message *newMessage = (Message*)malloc(sizeof(Message));
 			newMessage->text = text;
 			newMessage->length = length;
 			newMessage->next_msg = NULL;
-			msgPtr->next = newMessage;
+			msgPtr->next_msg = newMessage;
 			break;
 		}
 	}
@@ -78,7 +83,7 @@ int putFormatCheck(char *arg0, char *arg1){
 
 Message* next(int clientSocket, char *name){
 	messageBox *boxPtr;
-	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
 		if(strcmp(boxPtr->name, name) == 0){
 			if(boxPtr->message != NULL){
 				Message *msgPtr = boxPtr->message;
@@ -92,9 +97,9 @@ Message* next(int clientSocket, char *name){
 	return NULL;
 }
 
-void open(int clientSocket, char *name){
+void openBox(int clientSocket, char *name){
 	messageBox *boxPtr;
-	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
 		if(strcmp(boxPtr->name, name) == 0){
 			boxPtr->open = 1;
 			break;
@@ -108,7 +113,7 @@ int validName(char *name, int length){
 	if(length < 5 || length > 25) return -2;
 	if(!((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'))) return -2;
 	messageBox *boxPtr;
-	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next){	//Checks if message box already exists
+	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){	//Checks if message box already exists
 		if(strcmp(boxPtr->name, name) == 0){
 			if(boxPtr->open == 1){
 				return -1;	
@@ -131,13 +136,13 @@ void create(int clientSocket, char *name){
 
 //Server forms the listener socket while client reaches out to the server
 void commandHandler(void* args){
-	Arguments *arguments = (Arguments*)args;
+	commandArgs *arguments = (commandArgs*)args;
 	
 	int msgLength = 0;
 	char buffer[1024] = {0};
 	char* confirmation = "HELLO DUMBv0 ready!\n";
 
-	send(arguments->clientSocket, buffer, 0);
+	send(arguments->clientSocket, confirmation, strlen(confirmation), 0);
 	msgLength = recv(arguments->clientSocket, buffer, 1024, 0);
 	buffer[msgLength] = '\0';
 	printf("%s", buffer);
@@ -169,9 +174,9 @@ void commandHandler(void* args){
 		}
 		cmd[i] = '\0';
 		//copies arg0 if present after cmd
+		int k = 0;
 		if(i != msgLength){
 			int j;
-			int k = 0;
 			for(j=i+1; j < msgLength; j++){	
 				if(buffer[j] == '!'){
 					break;
@@ -179,7 +184,7 @@ void commandHandler(void* args){
 				arg0[k] = buffer[j];
 				k++;
 			}
-			arg[k] = '\0';
+			arg0[k] = '\0';
 			//copies arg1 if present after arg0
 			if(j != msgLength){
 				int l;
@@ -191,15 +196,15 @@ void commandHandler(void* args){
 				arg1[m] = '\0';
 			}
 		}
-		if(strcmp(cmd, "quit") == 0){	//E.1
+		if(strcmp(cmd, "GDBYE") == 0){	//E.1
 			//client expects no response text from server, since the server should close the connection
 			//The server should close the client's open message box, if the user had one and did not close it before disconnecting
 			if(open == 1){
-				close(arguments->clientSocket, currentOpenBox);
+				closeBox(arguments->clientSocket, currentOpenBox);
 			} 
 			close(arguments->clientSocket);	//not sure if this disconnects the client
 			return;
-		}else if(strcmp(cmd, "create") == 0){	//E.2
+		}else if(strcmp(cmd, "CREAT") == 0){	//E.2
 			int valid = validName(arg0, k);
 			if(valid == -2){	//Incorrect format
 				response = "ER:WHAT?";
@@ -212,7 +217,7 @@ void commandHandler(void* args){
 				response = "OK!\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
-		}else if(strcmp(cmd, "open") == 0){	//E.3
+		}else if(strcmp(cmd, "OPNBX") == 0){	//E.3
 			int valid = validName(arg0, k);
 			if(valid == -2){
 				response = "ER:WHAT?\n";
@@ -221,7 +226,7 @@ void commandHandler(void* args){
 				response = "ER:OPEND\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}else if(valid == 0){	//Good, this means message box exists and its closed 
-				open(arguments->clientSocket, arg0);
+				openBox(arguments->clientSocket, arg0);
 				response = "OK!\n";
 				open = 1;
 				currentOpenBox = arg0;
@@ -230,7 +235,7 @@ void commandHandler(void* args){
 				response = "ER:NEXST\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
-		}else if(strcmp(cmd, "next") == 0){	//E.4
+		}else if(strcmp(cmd, "NXTMSG") == 0){	//E.4
 			if(open == 1){
 				Message *message;
 				if((message = next(arguments->clientSocket, currentOpenBox)) == NULL){
@@ -245,7 +250,7 @@ void commandHandler(void* args){
 				response = "ER:NOOPN\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
-		}else if(strcmp(cmd, "put") == 0){	//E.5
+		}else if(strcmp(cmd, "PUTMG") == 0){	//E.5
 			if(open == 1){
 				int format = putFormatCheck(arg0, arg1);
 				if(format == -1){
@@ -260,7 +265,7 @@ void commandHandler(void* args){
 				response = "ER:NOOPN\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
-		}else if(strcmp(cmd, "delete") == 0){	//E.6
+		}else if(strcmp(cmd, "DELBX") == 0){	//E.6
 			int valid = validName(arg0, k);
 			if(valid == -2){
 				response = "ER:WHAT?\n";
@@ -280,10 +285,10 @@ void commandHandler(void* args){
 				response = "ER:NEXST\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
-		}else if(strcmp(cmd, "close") == 0){	//E.7
+		}else if(strcmp(cmd, "CLSBX") == 0){	//E.7
 			if(open == 1){
 				if(strcmp(arg0, currentOpenBox) == 0){
-					close(arguments->clientSocket, currentOpenBox);
+					closeBox(arguments->clientSocket, currentOpenBox);
 					currentOpenBox = "";
 					open = -1;
 					response = "OK!\n";
@@ -304,41 +309,39 @@ void commandHandler(void* args){
 	return;
 }
 
-void clientHandler(int serverSocket, int serverAddr, int addrlen){	//args contains: serverSocket, serverAddress, addressSize
+void clientHandler(int serverSocket, struct sockaddr_in addr, int addrlen){	//args contains: serverSocket, serverAddress, addressSize
+	struct sockaddr *serverAddr = (struct sockaddr*)&addr;	//*E*
 	//signal to end program incomplete	
-	struct sigaction flag;	
 	struct itimerval timer;
-	memset(&flag, 0, sizeof(flag));
-	flag.sa_handler = //flag handler function
-	sigaction(SIGALRM, &alarm, NULL);	//SIGALRM stored in alarm, previous alarm stored in NULL bc no longer needed
+	signal(SIGALRM, sighandler);
 	timer.it_value.tv_sec = 15;
-	timer.it_value.tv_usec = 15;
-	timer.it_interval.tv_sec = 15;
-	timer.it_interval.tv_usec = 15;
+	timer.it_value.tv_usec = 0;
+	timer.it_value.tv_sec = 15;
+	timer.it_interval.tv_usec = 0;
 	setitimer(ITIMER_REAL, &timer, NULL);
 	//--------------------------------
 	int clientSocket;
-	int threadID;
+	pthread_t threadID;
 	while(killFlag == 0){
-		if((clientSocket = accept(serverSocket, serverAddr, addrlen)) < 0){
+		if((clientSocket = accept(serverSocket, serverAddr, (socklen_t*)&addrlen)) < 0){	//*E*
 			perror("Accept");
 			exit(EXIT_FAILURE);
 		}
-		Node *threadNode = (Node*)malloc(sizeof(node));
-		Arguments *args = (Arguments*)malloc(sizeof(int));
+		Node *threadNode = (Node*)malloc(sizeof(Node));
+		commandArgs *args = (commandArgs*)malloc(sizeof(int));
 		args->clientSocket = clientSocket;
-		if((pthread_create(&threadID, NULL, commandHandler, (void*)args)) != 0){
+		if((pthread_create(&threadID, NULL, (void*)commandHandler, (void*)args)) != 0){
 			perror("Listener");
 			exit(EXIT_FAILURE);
 		}
 		threadNode->threadID = threadID;
 		threadNode->clientSocket = clientSocket;
 		//threadNode list used to keep track of individual client requests and more importantly to join all threads at the end
-		if(head == NULL){
-			head = threadNode;
+		if(threadHead == NULL){
+			threadHead = threadNode;
 		}else{
 			Node *ptr;
-			for(ptr = head; ptr->next != NULL; ptr = ptr->next){
+			for(ptr = threadHead; ptr->next != NULL; ptr = ptr->next){	//don't think it is necessary to put at the end of list
 			}
 			ptr->next = threadNode;	
 		}
@@ -352,7 +355,6 @@ int main(int argc, char** argv){
 	}
 	
 	int serverSocket;
-	int clientSocket;
 	struct sockaddr_in serverAddr;
 	int addrlen = sizeof(serverAddr);
 	int option = 1;	//boolean value used to specify if bind() should allow reuse of local addresses (USED in conjunction with SO_REUSEADDR)
@@ -390,9 +392,6 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	
-	Arguments* acceptArgs = (Arguments*)malloc(sizeof(Arguments));
-	acceptArgs->serverSocket = serverSocket;
-	acceptArgs->serverAddr = (struct sockaddr*)&serverAddr;
-	acceptArgs->addrSize = (socklen_t*)&addrlen;
 	clientHandler(serverSocket, serverAddr, addrlen);
+	return 0;
 }

@@ -133,6 +133,7 @@ void checkError(int sock, int command){
 				printf("Error, your message is broken or malformed\n");
 				return ;
 			}
+		}
 		if(command == 4){
 			if(strcmp("NOOPN", errorName)==0){ //putmg
 				printf("Message box not open or message box does not exist\n");
@@ -141,6 +142,7 @@ void checkError(int sock, int command){
 				printf("Error, your message is broken or malformed\n");
 				return;
 			}
+		}
 		if(command == 5){ 
 			if(strcmp("NEXST", errorName)==0){ //delbx
 				printf("Message box does not exist\n");
@@ -155,6 +157,7 @@ void checkError(int sock, int command){
 				printf("Error, your message is broken or malformed\n");
 				return;
 			}
+		}
 		if(command == 6){
 			if(strcmp("NOOPN", errorName)==0){ //clsbx
 				printf("No open message box, cannot close\n");

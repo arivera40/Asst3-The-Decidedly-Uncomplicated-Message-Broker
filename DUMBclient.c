@@ -14,7 +14,7 @@ void commands(int sockfd);
 
 void commands(int sockfd){
 	int work = 0;
-	send(sockfd, "HELLO\n", 5, 0);
+	//send(sockfd, "HELLO\n", 5, 0);
 	char buffer[200];
 	recv(sockfd, buffer, 200, 0);
 	printf(buffer);
@@ -27,7 +27,7 @@ void commands(int sockfd){
 		char message[256] = {0};
 		
 		printf("Please type in command\n");
-		scanf("%s", commandInput); //scans in input and adds correct #of bytes and add '\0' at the end
+		scanf("%s", commandInput);
 
 		if(strcmp("quit", commandInput) == 0){
 			strcpy(serverCommands, "GDBYE");
@@ -39,7 +39,7 @@ void commands(int sockfd){
 			read(0,mailboxName,sizeof(mailboxName));
 			strcpy(serverCommands, "CREAT!");
 			strcpy(&serverCommands[6], mailboxName);
-			write(sockfd, serverCommands, strlen(serverCommands));
+			send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(sockfd, 1);
 		}else if(strcmp("open", commandInput) == 0){ // open mailbox
 			printf("What is the name of the mailbox you want to open?\n");
@@ -220,7 +220,8 @@ int main(int argc, char** argv){
 	}else{
 		printf("Connection successful!\n");
 	}
-	
+
+	send(sockfd, argv[1], strlen(argv[1]), 0);
 	commands(sockfd);
 	
 	return 0;

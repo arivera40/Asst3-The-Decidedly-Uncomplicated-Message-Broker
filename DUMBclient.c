@@ -55,7 +55,8 @@ void commands(int sockfd){
 		}else if(strcmp("put", commandInput)== 0){ // put message
 			printf("What message do you want to put?\n");
 			read(0, message, sizeof(message));
-			int sizeOfMessage = sizeof(message);
+			int sizeOfMessage = strlen(message);
+			printf(message);
 			char number [15];
 			sprintf(number,"%d", sizeOfMessage); //converts num to string
 			int j =0;
@@ -64,9 +65,11 @@ void commands(int sockfd){
 			}
 			number[j] = '!';
 			//include size of message
+			printf("%d\n", sizeOfMessage);
 			strcpy(serverCommands, "PUTMG!");
 			strcpy(&serverCommands[6],number);
-			strcpy(&serverCommands[6+sizeof(number)], message);
+			strcpy(&serverCommands[6+strlen(number)], message);
+			printf(serverCommands);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(sockfd, 4);
 		}else if(strcmp("delete", commandInput) == 0){ // delete mailbox
@@ -100,7 +103,7 @@ void checkError(int sock, int command){
 	messagefromServer[msgLength] = '\0';
 
 	if(messagefromServer[0] == 'O'){
-		printf(" Command successfully performed\n");
+		printf("Command successfully performed\n");
 	}else{
 		if(command==1){
 			if(strcmp("ER:EXIST", messagefromServer) == 0){ // create

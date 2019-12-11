@@ -24,7 +24,7 @@ void sighandler(int signum){
 void closeBox(int clientSocket, char *name){
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
-		if(strcmp(boxPtr->name, name) == 0){
+		if(strcmp(boxPtr->box_name, name) == 0){
 			boxPtr->open = -1;
 			break;
 		}
@@ -33,7 +33,7 @@ void closeBox(int clientSocket, char *name){
 }
 
 int delete(int clientSocket, char *name){
-	if(strcmp(boxHead->name, name) == 0){
+	if(strcmp(boxHead->box_name, name) == 0){
 		if(boxHead->message != NULL){
 			return -1;
 		}else{
@@ -45,7 +45,7 @@ int delete(int clientSocket, char *name){
 	}
 	messageBox *prevPtr = NULL;
 	messageBox *ptr = boxHead;
-	while(strcmp(ptr->name, name) != 0){
+	while(strcmp(ptr->box_name, name) != 0){
 		prevPtr = ptr;
 		ptr = ptr->next_box;
 	}
@@ -57,7 +57,7 @@ int delete(int clientSocket, char *name){
 void put(int clientSocket, int length, char *text, char *name){
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
-		if((strcmp(boxPtr->name, name) == 0) && (boxPtr->clientSocket == clientSocket)){
+		if((strcmp(boxPtr->box_name, name) == 0) && (boxPtr->clientSocket == clientSocket)){
 			Message *newMessage = (Message*)malloc(sizeof(Message));
 			newMessage->text = malloc(strlen(text)+1);
 			strcpy(newMessage->text, text);
@@ -97,7 +97,7 @@ int putFormatCheck(char *arg0, char *arg1){
 Message* next(int clientSocket, char *name){
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
-		if(strcmp(boxPtr->name, name) == 0){
+		if(strcmp(boxPtr->box_name, name) == 0){
 			if(boxPtr->message != NULL){
 				Message *msgPtr = boxPtr->message;
 				boxPtr->message = boxPtr->message->next_msg;
@@ -113,7 +113,7 @@ Message* next(int clientSocket, char *name){
 void openBox(int clientSocket, char *name){
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
-		if(strcmp(boxPtr->name, name) == 0){
+		if(strcmp(boxPtr->box_name, name) == 0){
 			boxPtr->open = 1;
 			boxPtr->clientSocket = clientSocket;
 			break;
@@ -128,7 +128,8 @@ int validName(char *name, int length){
 	if(!((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'))) return -2;
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){	//Checks if message box already exists
-		if(strcmp(boxPtr->name, name) == 0){
+		printf("\n\nboxPtr->box_name = %s | name = %s\n\n", boxPtr->box_name, name);
+		if(strcmp(boxPtr->box_name, name) == 0){
 			if(boxPtr->open == 1){
 				return -1;	
 			}else{
@@ -141,7 +142,8 @@ int validName(char *name, int length){
 
 void create(int clientSocket, char *name){
 	messageBox *newBox = (messageBox*)malloc(sizeof(messageBox));
-	newBox->name = name;
+	newBox->box_name = malloc(strlen(name)+1);
+	newBox->box_name = name;
 	newBox->open = -1;
 	newBox->message = NULL;
 	newBox->next_box = boxHead;
@@ -242,6 +244,7 @@ void commandHandler(void* args){
 				response = "CREAT\n";
 				send(arguments->clientSocket, "OK!\n", 4, 0);
 			}
+			printf("\n\nboxHead->box_name = %s\n\n", boxHead->box_name);
 			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "OPNBX") == 0){	//E.3
 			int valid = validName(arg0, k);
@@ -302,8 +305,11 @@ void commandHandler(void* args){
 					send(arguments->clientSocket, response, strlen(response), 0);
 				}else{
 					put(arguments->clientSocket, atoi(arg0), arg1, currentOpenBox);
-					response = "OK!%d\n";
-					send(arguments->clientSocket, response, strlen(response), 0);
+					char reply[1024] = {0};
+					strcpy(reply, "OK!");
+					strcpy(&reply[3], arg0);
+					send(arguments->clientSocket, reply, strlen(reply), 0);
+					response = reply;
 				}
 			}else{
 				response = "ER:NOOPN\n";

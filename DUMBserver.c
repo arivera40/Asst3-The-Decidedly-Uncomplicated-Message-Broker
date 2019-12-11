@@ -110,6 +110,7 @@ void openBox(int clientSocket, char *name){
 
 //(-2): invalid name, (-1): message box exists but its open, (0): message box exists and its closed, (1): message box does not exist
 int validName(char *name, int length){
+	printf("%s\n", name);
 	if(length < 5 || length > 25) return -2;
 	if(!((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'))) return -2;
 	messageBox *boxPtr;
@@ -122,6 +123,7 @@ int validName(char *name, int length){
 			}
 		}
 	}
+	printf("1\n");
 	return 1;
 }
 
@@ -160,12 +162,15 @@ void commandHandler(void* args){
 		//removes \n included in msgLength
 		msgLength = msgLength-1;
 		buffer[msgLength] = '\0';
+		printf("%s\n", buffer);
 		//resets cmd and msg strings for next iteration
 		memset(cmd, 0, sizeof(cmd));
 		memset(arg0, 0, sizeof(arg0));
 		memset(arg1, 0, sizeof(arg1));
+
 		//copies cmd from buffer
 		int i = 0;
+		printf("Enter print statements\n");
 		for(i=0; i < msgLength; i++){
 			if(buffer[i] == ' ' || buffer[i] == '!'){
 				break;
@@ -210,7 +215,7 @@ void commandHandler(void* args){
 				response = "ER:WHAT?";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}else if(valid == -1 || valid == 0){	//Message Box already exists
-				response = "ER:EXIST\n";
+				response = "ER:EXIST";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}else{
 				create(arguments->clientSocket, arg0);

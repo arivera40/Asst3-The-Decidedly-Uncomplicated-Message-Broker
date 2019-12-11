@@ -97,6 +97,19 @@ void commands(int sockfd){
 	return;
 }
 
+void separateStrings(char* messagefromServer){
+	//char name[26] = {0};
+	char message[2000] = {0};
+	//int size = strlen(messagefromServer);
+	int i = 3;
+	while(messagefromServer[i] != '!'){
+		i++;
+	}
+	strcpy(message,&messagefromServer[i]);
+	printf("Okay, message says %s",  message);
+	return;
+}
+
 void checkError(int sock, int command){
 	char messagefromServer[10] = {0};
 	int msgLength = recv(sock, messagefromServer, 10, 0);
@@ -104,10 +117,11 @@ void checkError(int sock, int command){
 
 	if((messagefromServer[0] == 'O') && (strlen(messagefromServer) == 3)){
 		printf("Command successfully performed\n");
+		
 	}else if(messagefromServer[0] == 'O' && command == 3){	//successful nxt, expects OK!arg0!msg
-		
+		separateStrings(messagefromServer);
 	}else if(messagefromServer[0] == 'O' && command == 4){	//successful put, expects OK!arg0
-		
+		separateStrings(messagefromServer);
 	}else{
 		if(command==1){
 			if(strcmp("ER:EXIST", messagefromServer) == 0){ // create

@@ -14,15 +14,21 @@ void commands(int sockfd);
 
 void commands(int sockfd){
 	int work = 0;
+	send(sockfd, "HELLO\n", 5, 0);
+	char buffer[200];
+	recv(sockfd, buffer, 200, 0);
+	printf(buffer);
+
+
 	while(work == 0){
-		char* commandInput = "";
-		char mailboxName[26];
-		char serverCommands[4096];
-		char message[4000];
-		int recvSocket = 0;
+		char commandInput[256] = {0};
+		char mailboxName[256] = {0};
+		char serverCommands[1024] = {0};
+		char message[256] = {0};
 		
 		printf("Please type in command\n");
 		scanf("%s", commandInput); //scans in input and adds correct #of bytes and add '\0' at the end
+
 		if(strcmp("quit", commandInput) == 0){
 			strcpy(serverCommands, "GDBYE");
 			send(sockfd, serverCommands,strlen(serverCommands), 0);
@@ -33,21 +39,19 @@ void commands(int sockfd){
 			read(0,mailboxName,sizeof(mailboxName));
 			strcpy(serverCommands, "CREAT!");
 			strcpy(&serverCommands[6], mailboxName);
-			send(sockfd, serverCommands, sizeof(serverCommands), 0);
-			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
-			checkError(recvSocket, 1);
+			write(sockfd, serverCommands, strlen(serverCommands));
+			checkError(sockfd, 1);
 		}else if(strcmp("open", commandInput) == 0){ // open mailbox
 			printf("What is the name of the mailbox you want to open?\n");
 			read(0, mailboxName, sizeof(mailboxName));
 			strcpy(serverCommands, "OPNBX!");
 			strcpy(&serverCommands[6], mailboxName);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
-			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
-			checkError(recvSocket,2);
+			checkError(sockfd,2);
 		}else if(strcmp("next", commandInput) == 0){ // get next message
 			strcpy(serverCommands,"NXTMG!");
-			recvSocket = send(sockfd, serverCommands, strlen(serverCommands), 0);
-			checkError(recvSocket, 3); //
+			send(sockfd, serverCommands, strlen(serverCommands), 0);
+			checkError(sockfd, 3); //
 		}else if(strcmp("put", commandInput)== 0){ // put message
 			printf("What message do you want to put?\n");
 			read(0, message, sizeof(message));
@@ -64,24 +68,21 @@ void commands(int sockfd){
 			strcpy(&serverCommands[6],number);
 			strcpy(&serverCommands[6+sizeof(number)], message);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
-			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
-			checkError(recvSocket, 4);
+			checkError(sockfd, 4);
 		}else if(strcmp("delete", commandInput) == 0){ // delete mailbox
 			printf("Which mailbox do you want to delete?\n");
 			read(0, mailboxName, sizeof(mailboxName));
 			strcpy(serverCommands, "DELBX!");
 			strcpy(&serverCommands[6], mailboxName);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
-			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
-			checkError(recvSocket, 5);
+			checkError(sockfd, 5);
 		}else if(strcmp("close", commandInput) == 0){ //close mailbox
 			printf("Which mailbox do you want to close?\n");
 			read(0, mailboxName, sizeof(mailboxName));
 			strcpy(serverCommands, "CLSBX!");
 			strcpy(&serverCommands[6], mailboxName);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
-			recvSocket = read(sockfd, serverCommands, strlen(serverCommands));
-			checkError(recvSocket, 6);
+			checkError(sockfd, 6);
 		} else if(strcmp("help", commandInput) == 0){
 			printf("Here are the commands you can type\n");
 			printf("quit\ncreate\ndelete\nopen\nclose\nnext\nput\n");
@@ -94,15 +95,15 @@ void commands(int sockfd){
 }
 
 void checkError(int sock, int command){
-	char messagefromServer[8];
-	read(sock, messagefromServer, 3);
-	char errorName[5];
-	if(strcmp("OK!", messagefromServer)== 0){
+	char messagefromServer[10] = {0};
+	int msgLength = recv(sock, messagefromServer, 10, 0);
+	messagefromServer[msgLength] = '\0';
+
+	if(messagefromServer[0] == 'O'){
 		printf(" Command successfully performed\n");
 	}else{
-		strcpy(errorName, &errorName[3]);
 		if(command==1){
-			if(strcmp("EXIST", errorName) == 0){ // create
+			if(strcmp("ER:EXIST", messagefromServer) == 0){ // create
 				printf("Error: Username already exists\n");
 				return;
 			}else{
@@ -111,10 +112,10 @@ void checkError(int sock, int command){
 			}
 		}
 		if(command == 2){
-			if (strcmp("NEXST", errorName)== 0){ //openbox
+			if (strcmp("ER:NEXST", messagefromServer)== 0){ //openbox
 				printf("Box does not exist, cannot be opened\n");
 				return;
-			}else if(strcmp("OPEND", errorName)==0){
+			}else if(strcmp("ER:OPEND", messagefromServer)==0){
 				printf("Box already ope, cannot be opened\n");
 				return;
 			}else{
@@ -123,10 +124,10 @@ void checkError(int sock, int command){
 			}
 		}
 		if(command == 3){
-			if (strcmp("EMPTY", errorName)== 0){//nxtmg
+			if (strcmp("ER:EMPTY", messagefromServer)== 0){//nxtmg
 				printf("No messages left in the message box\n");
 				return;
-			}else if(strcmp("NOOPN", errorName)==0){
+			}else if(strcmp("ER:NOOPN", messagefromServer)==0){
 				printf("Message box not open or message box does not exist\n");
 				return;
 			}else{
@@ -135,7 +136,7 @@ void checkError(int sock, int command){
 			}
 		}
 		if(command == 4){
-			if(strcmp("NOOPN", errorName)==0){ //putmg
+			if(strcmp("ER:NOOPN", messagefromServer)==0){ //putmg
 				printf("Message box not open or message box does not exist\n");
 				return;
 			}else{
@@ -144,13 +145,13 @@ void checkError(int sock, int command){
 			}
 		}
 		if(command == 5){ 
-			if(strcmp("NEXST", errorName)==0){ //delbx
+			if(strcmp("ER:NEXST", messagefromServer)==0){ //delbx
 				printf("Message box does not exist\n");
 				return;
-			}else if(strcmp("OPEND", errorName)==0){ 
+			}else if(strcmp("ER:OPEND", messagefromServer)==0){ 
 				printf("Message box currently opened, cannot delete while opened\n");
 				return;
-			}else if(strcmp("NOTMT", errorName)==0){ 
+			}else if(strcmp("ER:NOTMT", messagefromServer)==0){ 
 				printf("Message box still has messages, cannot delete\n");
 				return ;
 			}else{
@@ -159,7 +160,7 @@ void checkError(int sock, int command){
 			}
 		}
 		if(command == 6){
-			if(strcmp("NOOPN", errorName)==0){ //clsbx
+			if(strcmp("ER:NOOPN", messagefromServer)==0){ //clsbx
 				printf("No open message box, cannot close\n");
 				return;
 			}else {

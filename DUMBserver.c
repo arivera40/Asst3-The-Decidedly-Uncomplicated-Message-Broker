@@ -123,7 +123,6 @@ int validName(char *name, int length){
 			}
 		}
 	}
-	printf("1\n");
 	return 1;
 }
 
@@ -142,12 +141,17 @@ void commandHandler(void* args){
 	
 	int msgLength = 0;
 	char buffer[1024] = {0};
+	char clientID[1024] = {0};
 	char* confirmation = "HELLO DUMBv0 ready!\n";
+	
+	time_t timed = time(NULL);
+	struct tm *ptm = localtime(&timed);
 
-	msgLength = recv(arguments->clientSocket, buffer, 1024, 0);
+	msgLength = recv(arguments->clientSocket, clientID, 1024, 0);
 	send(arguments->clientSocket, confirmation, strlen(confirmation), 0);
-	buffer[msgLength] = '\0';
-	printf("%s", buffer);
+	clientID[msgLength] = '\0';
+	printf("%02d%02d %d Dec %s connected\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID);
+	printf("%02d%02d %d Dec %s HELLO\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID);
 	connections++;
 
 	int open = -1;	//keeps track of box open(1) or closed(-1)
@@ -162,7 +166,7 @@ void commandHandler(void* args){
 		//removes \n included in msgLength
 		msgLength = msgLength-1;
 		buffer[msgLength] = '\0';
-		printf("%s\n", buffer);
+		//printf("%s\n", buffer);
 		//resets cmd and msg strings for next iteration
 		memset(cmd, 0, sizeof(cmd));
 		memset(arg0, 0, sizeof(arg0));
@@ -170,7 +174,6 @@ void commandHandler(void* args){
 
 		//copies cmd from buffer
 		int i = 0;
-		printf("Enter print statements\n");
 		for(i=0; i < msgLength; i++){
 			if(buffer[i] == ' ' || buffer[i] == '!'){
 				break;
@@ -207,6 +210,7 @@ void commandHandler(void* args){
 			if(open == 1){
 				closeBox(arguments->clientSocket, currentOpenBox);
 			} 
+			printf("%02d%02d %d Dec %s GDBYE\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID);
 			close(arguments->clientSocket);	//not sure if this disconnects the client
 			return;
 		}else if(strcmp(cmd, "CREAT") == 0){	//E.2
@@ -219,9 +223,10 @@ void commandHandler(void* args){
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}else{
 				create(arguments->clientSocket, arg0);
-				response = "OK!\n";
-				send(arguments->clientSocket, response, strlen(response), 0);
+				response = "CREAT\n";
+				send(arguments->clientSocket, "OK!\n", 4, 0);
 			}
+			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "OPNBX") == 0){	//E.3
 			int valid = validName(arg0, k);
 			if(valid == -2){
@@ -232,14 +237,15 @@ void commandHandler(void* args){
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}else if(valid == 0){	//Good, this means message box exists and its closed 
 				openBox(arguments->clientSocket, arg0);
-				response = "OK!\n";
+				response = "OPNBX\n";
 				open = 1;
 				currentOpenBox = arg0;
-				send(arguments->clientSocket, response, strlen(response), 0);
+				send(arguments->clientSocket, "OK!\n", 4, 0);
 			}else{	//this means message box does not exist
 				response = "ER:NEXST\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
+			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "NXTMSG") == 0){	//E.4
 			if(open == 1){
 				Message *message;
@@ -255,6 +261,7 @@ void commandHandler(void* args){
 				response = "ER:NOOPN\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
+			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "PUTMG") == 0){	//E.5
 			if(open == 1){
 				int format = putFormatCheck(arg0, arg1);
@@ -270,6 +277,7 @@ void commandHandler(void* args){
 				response = "ER:NOOPN\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
+			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "DELBX") == 0){	//E.6
 			int valid = validName(arg0, k);
 			if(valid == -2){
@@ -283,21 +291,22 @@ void commandHandler(void* args){
 					response = "ER:NOTMT\n";
 					send(arguments->clientSocket, response, strlen(response), 0);
 				}else{
-					response = "OK!\n";
-					send(arguments->clientSocket, response, strlen(response), 0);
+					response = "DELBX\n";
+					send(arguments->clientSocket, "OK!\n", 4, 0);
 				}
 			}else{
 				response = "ER:NEXST\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
+			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "CLSBX") == 0){	//E.7
 			if(open == 1){
 				if(strcmp(arg0, currentOpenBox) == 0){
 					closeBox(arguments->clientSocket, currentOpenBox);
 					currentOpenBox = "";
 					open = -1;
-					response = "OK!\n";
-					send(arguments->clientSocket, response, strlen(response), 0);
+					response = "CLSBX\n";
+					send(arguments->clientSocket, "OK!\n", 4, 0);
 				}else{
 					response = "ER:NOOPN\n";
 					send(arguments->clientSocket, response, strlen(response), 0);
@@ -306,9 +315,11 @@ void commandHandler(void* args){
 				response = "ER:NOOPN\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
+			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else{
 			response = "ER:WHAT?\n";
 			send(arguments->clientSocket, response, strlen(response), 0);
+			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}
 	}
 	return;

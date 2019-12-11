@@ -55,17 +55,24 @@ int delete(int clientSocket, char *name){
 }
 
 void put(int clientSocket, int length, char *text, char *name){
+	printf("Does it enter here(1)\n");
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
 		if((strcmp(boxPtr->name, name) == 0) && (boxPtr->clientSocket == clientSocket)){
-			Message *msgPtr;
-			for(msgPtr = boxPtr->message; msgPtr->next_msg != NULL; msgPtr = msgPtr->next_msg){
-			}
+			printf("does it enter here\n");
 			Message *newMessage = (Message*)malloc(sizeof(Message));
 			newMessage->text = text;
 			newMessage->length = length;
 			newMessage->next_msg = NULL;
-			msgPtr->next_msg = newMessage;
+			if(boxPtr->message == NULL){
+				boxPtr->message = newMessage;
+			}else{
+				Message *msgPtr;
+				for(msgPtr = boxPtr->message; msgPtr->next_msg != NULL; msgPtr = msgPtr->next_msg){
+				}
+				msgPtr->next_msg = newMessage;
+			}
+			
 			break;
 		}
 	}
@@ -118,7 +125,6 @@ void openBox(int clientSocket, char *name){
 
 //(-2): invalid name, (-1): message box exists but its open, (0): message box exists and its closed, (1): message box does not exist
 int validName(char *name, int length){
-	printf("%s\n", name);
 	if(length < 5 || length > 25) return -2;
 	if(!((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'))) return -2;
 	messageBox *boxPtr;
@@ -189,7 +195,7 @@ void commandHandler(void* args){
 			cmd[i] = buffer[i];
 		}
 		cmd[i] = '\0';
-		printf("%s\n" ,cmd);
+		//printf("%s\n" ,cmd);
 		//copies arg0 if present after cmd
 		int k = 0;
 		if(i != msgLength){
@@ -202,7 +208,7 @@ void commandHandler(void* args){
 				k++;
 			}
 			arg0[k] = '\0';
-			printf("%s\n",arg0);
+			//printf("%s\n",arg0);
 			//copies arg1 if present after arg0
 			if(j != msgLength){
 				int l;
@@ -212,7 +218,7 @@ void commandHandler(void* args){
 					m++;
 				}
 				arg1[m] = '\0';
-				printf("%s\n" ,arg1);
+				//printf("%s\n" ,arg1);
 			}
 		}
 		if(strcmp(cmd, "GDBYE") == 0){	//E.1
@@ -257,14 +263,23 @@ void commandHandler(void* args){
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
 			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
-		}else if(strcmp(cmd, "NXTMSG") == 0){	//E.4
+		}else if(strcmp(cmd, "NXTMG") == 0){	//E.4
 			if(open == 1){
 				Message *message;
 				if((message = next(arguments->clientSocket, currentOpenBox)) == NULL){
 					response = "ER:EMPTY\n";
 					send(arguments->clientSocket, response, strlen(response), 0);
 				}else{
-					response = "OK!%d!%s";	//Need to figure out how to format response for length and string
+					char number[15] = {0};
+					sprintf(number, "%d", message->length);
+					int n = 0
+					while(number[n] != '\0'){
+						n++;
+					}
+					number[n] = '!';
+					strcpy(response, "OK!");
+					strcpy(&response[3], number);
+					strcpy(&response[3+strlen(number)], message->text);
 					send(arguments->clientSocket, response, strlen(response), 0);
 					free(message);
 				}

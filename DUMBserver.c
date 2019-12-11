@@ -55,13 +55,12 @@ int delete(int clientSocket, char *name){
 }
 
 void put(int clientSocket, int length, char *text, char *name){
-	printf("Does it enter here(1)\n");
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
 		if((strcmp(boxPtr->name, name) == 0) && (boxPtr->clientSocket == clientSocket)){
-			printf("does it enter here\n");
 			Message *newMessage = (Message*)malloc(sizeof(Message));
-			newMessage->text = text;
+			newMessage->text = malloc(strlen(text)+1);
+			strcpy(newMessage->text, text);
 			newMessage->length = length;
 			newMessage->next_msg = NULL;
 			if(boxPtr->message == NULL){
@@ -72,7 +71,7 @@ void put(int clientSocket, int length, char *text, char *name){
 				}
 				msgPtr->next_msg = newMessage;
 			}
-			
+			printf("\n\n%s\n\n", newMessage->text);
 			break;
 		}
 	}
@@ -270,18 +269,25 @@ void commandHandler(void* args){
 					response = "ER:EMPTY\n";
 					send(arguments->clientSocket, response, strlen(response), 0);
 				}else{
+					char reply[1024] = {0};
 					char number[15] = {0};
 					sprintf(number, "%d", message->length);
-					int n = 0
+					int n = 0;
+					//printf("Does it enter here(1)\n");
 					while(number[n] != '\0'){
 						n++;
 					}
+					//printf("Does it enter here(2)\n");
 					number[n] = '!';
-					strcpy(response, "OK!");
-					strcpy(&response[3], number);
-					strcpy(&response[3+strlen(number)], message->text);
-					send(arguments->clientSocket, response, strlen(response), 0);
+					strcpy(reply, "OK!");
+					//printf("Does it enter here(3)\n");
+					strcpy(&reply[3], number);
+					strcpy(&reply[3+strlen(number)], message->text);
+					printf("\n\n%s\n\n", message->text);
+					send(arguments->clientSocket, reply, strlen(reply), 0);
+					free(message->text);
 					free(message);
+					response = reply;
 				}
 			}else{
 				response = "ER:NOOPN\n";

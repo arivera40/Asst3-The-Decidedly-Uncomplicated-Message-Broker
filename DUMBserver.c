@@ -57,7 +57,7 @@ int delete(int clientSocket, char *name){
 void put(int clientSocket, int length, char *text, char *name){
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
-		if(strcmp(boxPtr->name, name) == 0){
+		if((strcmp(boxPtr->name, name) == 0) && (boxPtr->clientSocket == clientSocket)){
 			Message *msgPtr;
 			for(msgPtr = boxPtr->message; msgPtr->next_msg != NULL; msgPtr = msgPtr->next_msg){
 			}
@@ -75,9 +75,16 @@ void put(int clientSocket, int length, char *text, char *name){
 int putFormatCheck(char *arg0, char *arg1){
 	int i;
 	for(i=0; i < strlen(arg0); i++){
-		if(isdigit(arg0[i]) == 0) return -1;
+		if(isdigit(arg0[i]) == 0){
+			printf("Goes in here bc isdigit(arg0[0])== %d", isdigit(arg0[i]));
+			return -1;
+		}
 	}
-	if(atoi(arg0) != strlen(arg1)) return -1;
+	if(atoi(arg0) != strlen(arg1)){
+		printf("atoi(arg0) = %d | strlen(arg1) = %zu\n", atoi(arg0), strlen(arg1));
+		return -1;
+	}
+	
 	return 1;
 }
 
@@ -102,6 +109,7 @@ void openBox(int clientSocket, char *name){
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){
 		if(strcmp(boxPtr->name, name) == 0){
 			boxPtr->open = 1;
+			boxPtr->clientSocket = clientSocket;
 			break;
 		}
 	}
@@ -181,6 +189,7 @@ void commandHandler(void* args){
 			cmd[i] = buffer[i];
 		}
 		cmd[i] = '\0';
+		printf("%s\n" ,cmd);
 		//copies arg0 if present after cmd
 		int k = 0;
 		if(i != msgLength){
@@ -193,15 +202,17 @@ void commandHandler(void* args){
 				k++;
 			}
 			arg0[k] = '\0';
+			printf("%s\n",arg0);
 			//copies arg1 if present after arg0
 			if(j != msgLength){
 				int l;
 				int m = 0;
-				for(l = j+1; l < msgLength-1; l++){	//msgLength-1 to exclude trailing ! in put cmd
+				for(l = j+1; l < msgLength; l++){	//msgLength-1 to exclude trailing ! in put cmd
 					arg1[m] = buffer[l];
 					m++;
 				}
 				arg1[m] = '\0';
+				printf("%s\n" ,arg1);
 			}
 		}
 		if(strcmp(cmd, "GDBYE") == 0){	//E.1
@@ -330,9 +341,9 @@ void clientHandler(int serverSocket, struct sockaddr_in addr, int addrlen){	//ar
 	//signal to end program incomplete	
 	struct itimerval timer;
 	signal(SIGALRM, sighandler);
-	timer.it_value.tv_sec = 15;
+	timer.it_value.tv_sec = 100;
 	timer.it_value.tv_usec = 0;
-	timer.it_value.tv_sec = 15;
+	timer.it_value.tv_sec = 100;
 	timer.it_interval.tv_usec = 0;
 	setitimer(ITIMER_REAL, &timer, NULL);
 	//--------------------------------

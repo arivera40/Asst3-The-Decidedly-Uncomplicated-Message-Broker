@@ -115,13 +115,12 @@ void checkError(int sock, int command){
 	int msgLength = recv(sock, messagefromServer, 10, 0);
 	messagefromServer[msgLength] = '\0';
 
-	if((messagefromServer[0] == 'O') && (strlen(messagefromServer) == 3)){
+	if(messagefromServer[0] == 'O' && command == 3){
+		separateStrings(messagefromServer);	
+	}else if(messagefromServer[0] == 'O' && command == 4){	//successful nxt, expects OK!arg0!msg
+		separateStrings(messagefromServer);
+	}else if(messagefromServer[0] == 'O'){	//successful put, expects OK!arg0
 		printf("Command successfully performed\n");
-		
-	}else if(messagefromServer[0] == 'O' && command == 3){	//successful nxt, expects OK!arg0!msg
-		separateStrings(messagefromServer);
-	}else if(messagefromServer[0] == 'O' && command == 4){	//successful put, expects OK!arg0
-		separateStrings(messagefromServer);
 	}else{
 		if(command==1){
 			if(strcmp("ER:EXIST", messagefromServer) == 0){ // create

@@ -14,7 +14,7 @@ typedef struct _Message{
 } Message;
 
 typedef struct _messageBox{
-	char *name;
+	char *box_name;
 	int clientSocket;
 	int open;
 	struct _Message* message;

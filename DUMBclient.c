@@ -55,9 +55,9 @@ void commands(int sockfd){
 		}else if(strcmp("put", commandInput)== 0){ // put message
 			printf("What message do you want to put?\n");
 			read(0, message, sizeof(message));
-			int sizeOfMessage = strlen(message);
+			int sizeOfMessage = strlen(message)-1;
 			printf(message);
-			char number [15];
+			char number [15] = {0};
 			sprintf(number,"%d", sizeOfMessage); //converts num to string
 			int j =0;
 			while(number[j] != '\0'){
@@ -102,8 +102,12 @@ void checkError(int sock, int command){
 	int msgLength = recv(sock, messagefromServer, 10, 0);
 	messagefromServer[msgLength] = '\0';
 
-	if(messagefromServer[0] == 'O'){
+	if((messagefromServer[0] == 'O') && (strlen(messagefromServer) == 3)){
 		printf("Command successfully performed\n");
+	}else if(messagefromServer[0] == 'O' && command == 3){	//successful nxt, expects OK!arg0!msg
+		
+	}else if(messagefromServer[0] == 'O' && command == 4){	//successful put, expects OK!arg0
+		
 	}else{
 		if(command==1){
 			if(strcmp("ER:EXIST", messagefromServer) == 0){ // create
@@ -119,7 +123,7 @@ void checkError(int sock, int command){
 				printf("Box does not exist, cannot be opened\n");
 				return;
 			}else if(strcmp("ER:OPEND", messagefromServer)==0){
-				printf("Box already ope, cannot be opened\n");
+				printf("Box already open, cannot be opened\n");
 				return;
 			}else{
 				printf("Error, your message is broken or malformed\n");

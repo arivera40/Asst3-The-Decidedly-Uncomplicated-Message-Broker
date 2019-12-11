@@ -97,16 +97,34 @@ void commands(int sockfd){
 	return;
 }
 
-void separateStrings(char* messagefromServer){
-	//char name[26] = {0};
+void separateStrings(char* messagefromServer, int command){
+	char length[10] = {0};
 	char message[2000] = {0};
 	//int size = strlen(messagefromServer);
-	int i = 3;
-	while(messagefromServer[i] != '!'){
-		i++;
+	int i;
+	int j;
+	int k = 0;
+	int l = 0;
+	for(i=3; i < strlen(messagefromServer); i++){
+		if(messagefromServer[i] == '!'){
+			printf("\n\nDoes it enter here?\n\n");
+			for(j=i; j < strlen(messagefromServer); j++){
+				message[l] = messagefromServer[j];
+				l++;
+			}
+			message[l] = '\0';
+			break;
+		}
+		length[k] = messagefromServer[i];
+		k++;
 	}
-	strcpy(message,&messagefromServer[i]);
-	printf("Okay, message says %s",  message);
+	length[k] = '\0';
+	if(command == 3){
+		printf("Okay, message of length %s says %s\n",  length, message);
+	}	//next
+	if(command == 4){
+		printf("Command successfully performed, message of length %s inserted\n", length);	//put
+	}
 	return;
 }
 
@@ -116,9 +134,9 @@ void checkError(int sock, int command){
 	messagefromServer[msgLength] = '\0';
 
 	if(messagefromServer[0] == 'O' && command == 3){
-		separateStrings(messagefromServer);	
+		separateStrings(messagefromServer, command);	
 	}else if(messagefromServer[0] == 'O' && command == 4){	//successful nxt, expects OK!arg0!msg
-		separateStrings(messagefromServer);
+		separateStrings(messagefromServer, command);
 	}else if(messagefromServer[0] == 'O'){	//successful put, expects OK!arg0
 		printf("Command successfully performed\n");
 	}else{

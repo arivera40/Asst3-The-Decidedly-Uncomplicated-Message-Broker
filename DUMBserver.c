@@ -16,6 +16,7 @@ int killFlag = 0;
 int connections = 0;
 messageBox *boxHead = NULL;
 Node *threadHead = NULL;
+pthread_mutex_t lock;
 
 void sighandler(int signum){
 	exit(1);
@@ -143,7 +144,9 @@ int validName(char *name, int length){
 void create(int clientSocket, char *name){
 	messageBox *newBox = (messageBox*)malloc(sizeof(messageBox));
 	newBox->box_name = malloc(strlen(name)+1);
-	newBox->box_name = name;
+	char namePtr[26] = {0};
+	strcpy(namePtr, name);
+	newBox->box_name = namePtr;
 	newBox->open = -1;
 	newBox->message = NULL;
 	newBox->next_box = boxHead;
@@ -171,11 +174,19 @@ void commandHandler(void* args){
 
 	int open = -1;	//keeps track of box open(1) or closed(-1)
 	char *currentOpenBox = "";
-	char cmd[256] = {0};
+/*	char cmd[256] = {0};
 	char arg0[256] = {0};
-	char arg1[256] = {0};
+	char arg1[256] = {0};	*/
 	char *response = "";
+
+	int checker = 0;
 	while(killFlag == 0){
+
+		char cmd[256] = {0};
+		if(checker == 1) printf("\n\nboxHead->box_name = %s\n\n", boxHead->box_name);
+		char arg0[256] = {0};
+		if(checker == 1) printf("\n\nboxHead->box_name = %s\n\n", boxHead->box_name);
+		char arg1[256] = {0};
 		//receives command from client and puts it in buffer
 		msgLength = recv(arguments->clientSocket, buffer, 1024, 0);
 		//removes \n included in msgLength
@@ -183,11 +194,12 @@ void commandHandler(void* args){
 		buffer[msgLength] = '\0';
 		//printf("%s\n", buffer);
 		//resets cmd and msg strings for next iteration
-		memset(cmd, 0, sizeof(cmd));
+		/*memset(cmd, 0, sizeof(cmd));
 		memset(arg0, 0, sizeof(arg0));
-		memset(arg1, 0, sizeof(arg1));
+		memset(arg1, 0, sizeof(arg1));	*/
 
 		//copies cmd from buffer
+
 		int i = 0;
 		for(i=0; i < msgLength; i++){
 			if(buffer[i] == ' ' || buffer[i] == '!'){
@@ -232,7 +244,11 @@ void commandHandler(void* args){
 			close(arguments->clientSocket);	//not sure if this disconnects the client
 			return;
 		}else if(strcmp(cmd, "CREAT") == 0){	//E.2
+			printf("\n\narg0 = %s\n\n", arg0);
+			pthread_mutex_lock(&lock);
+			//if(checker == 1) printf("\n\nboxHead->box_name = %s\n\n", boxHead->box_name);
 			int valid = validName(arg0, k);
+			//if(checker == 1) printf("\n\nboxHead->box_name = %s\n\n", boxHead->box_name);
 			if(valid == -2){	//Incorrect format
 				response = "ER:WHAT?";
 				send(arguments->clientSocket, response, strlen(response), 0);
@@ -241,12 +257,14 @@ void commandHandler(void* args){
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}else{
 				create(arguments->clientSocket, arg0);
+
 				response = "CREAT\n";
 				send(arguments->clientSocket, "OK!\n", 4, 0);
 			}
-			printf("\n\nboxHead->box_name = %s\n\n", boxHead->box_name);
+			pthread_mutex_unlock(&lock);
 			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "OPNBX") == 0){	//E.3
+			pthread_mutex_lock(&lock);
 			int valid = validName(arg0, k);
 			if(valid == -2){
 				response = "ER:WHAT?\n";
@@ -264,6 +282,7 @@ void commandHandler(void* args){
 				response = "ER:NEXST\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
+			pthread_mutex_unlock(&lock);
 			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "NXTMG") == 0){	//E.4
 			if(open == 1){
@@ -317,6 +336,7 @@ void commandHandler(void* args){
 			}
 			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "DELBX") == 0){	//E.6
+			pthread_mutex_lock(&lock);
 			int valid = validName(arg0, k);
 			if(valid == -2){
 				response = "ER:WHAT?\n";
@@ -336,6 +356,7 @@ void commandHandler(void* args){
 				response = "ER:NEXST\n";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}
+			pthread_mutex_unlock(&lock);
 			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}else if(strcmp(cmd, "CLSBX") == 0){	//E.7
 			if(open == 1){
@@ -359,6 +380,7 @@ void commandHandler(void* args){
 			send(arguments->clientSocket, response, strlen(response), 0);
 			printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
 		}
+		checker++;
 	}
 	return;
 }
@@ -400,6 +422,7 @@ void clientHandler(int serverSocket, struct sockaddr_in addr, int addrlen){	//ar
 			ptr->next = threadNode;	
 		}
 	}
+	pthread_mutex_destroy(&lock);
 }
 
 int main(int argc, char** argv){
@@ -446,6 +469,7 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	printf("listening...\n");
+	pthread_mutex_init(&lock, NULL);
 	
 	clientHandler(serverSocket, serverAddr, addrlen);
 	return 0;

@@ -35,9 +35,9 @@ void commands(int sockfd){
 			work = 1;
 			
 		}else if(strcmp("create", commandInput) == 0){ // create message
-			printf("What is the name of the mailbox you want to create?\nopen>: ");
-			//read(0,mailboxName,sizeof(mailboxName));
-			scanf("%s",mailboxName);
+			printf("What is the name of the mailbox you want to create?\n");
+			read(0,mailboxName,sizeof(mailboxName));
+			//scanf("%s",mailboxName);
 			strcpy(serverCommands, "CREAT!");
 			strcpy(&serverCommands[6], mailboxName);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
@@ -46,8 +46,8 @@ void commands(int sockfd){
 			//printf("open:>\n");
 			printf("Okay, open which message box?\n");
 			printf("open>: ");
-			//read(0, mailboxName, sizeof(mailboxName));
-			scanf("%s",mailboxName);
+			read(0, mailboxName, sizeof(mailboxName));
+			//scanf("%s",mailboxName);
 			printf("%s\n", mailboxName);
 			strcpy(serverCommands, "OPNBX!");
 			strcpy(&serverCommands[6], mailboxName);

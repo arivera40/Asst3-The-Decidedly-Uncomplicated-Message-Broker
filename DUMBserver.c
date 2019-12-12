@@ -11,7 +11,6 @@
 #include <ctype.h>
 #include "utilities.h"
 
-Node *head = NULL; //Keeps track of client connections
 int killFlag = 0;
 int connections = 0;
 messageBox *boxHead = NULL;
@@ -40,6 +39,7 @@ int delete(int clientSocket, char *name){
 		}else{
 			messageBox *temp = boxHead;
 			boxHead = boxHead->next_box;
+			free(temp->box_name);
 			free(temp);
 			return 1;
 		}
@@ -126,7 +126,6 @@ int validName(char *name, int length){
 	if(!((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z'))) return -2;
 	messageBox *boxPtr;
 	for(boxPtr = boxHead; boxPtr != NULL; boxPtr = boxPtr->next_box){	//Checks if message box already exists
-		//printf("\n\nboxPtr->box_name = %s | name = %s\n\n", boxPtr->box_name, name);
 		if(strcmp(boxPtr->box_name, name) == 0){
 			if(boxPtr->open == 1){
 				return -1;	
@@ -214,9 +213,11 @@ void commandHandler(void* args){
 			//The server should close the client's open message box, if the user had one and did not close it before disconnecting
 			if(open == 1){
 				closeBox(arguments->clientSocket, currentOpenBox);
+				free(currentOpenBox);
 			} 
 			printf("%02d%02d %d Dec %s GDBYE\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID);
-			close(arguments->clientSocket);	//not sure if this disconnects the client
+			printf("%02d%02d %d Dec %s disconnected\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID);
+			free(arguments);
 			return;
 		}else if(strcmp(cmd, "CREAT") == 0){	//E.2
 			pthread_mutex_lock(&lock);
@@ -245,6 +246,12 @@ void commandHandler(void* args){
 				response = "ER:OPEND";
 				send(arguments->clientSocket, response, strlen(response), 0);
 			}else if(valid == 0){	//Good, this means message box exists and its closed 
+				if(open == 1){
+					closeBox(arguments->clientSocket, currentOpenBox);
+					free(currentOpenBox);
+					response = "CLSBX\n";
+					printf("%02d%02d %d Dec %s %s\n", ptm->tm_hour, ptm->tm_min, ptm->tm_mday, clientID, response);
+				}
 				openBox(arguments->clientSocket, arg0);
 				response = "OPNBX\n";
 				open = 1;
@@ -331,7 +338,7 @@ void commandHandler(void* args){
 			if(open == 1){
 				if(strcmp(arg0, currentOpenBox) == 0){
 					closeBox(arguments->clientSocket, currentOpenBox);
-					currentOpenBox = "";
+					free(currentOpenBox);
 					open = -1;
 					response = "CLSBX\n";
 					send(arguments->clientSocket, "OK!\n", 4, 0);
@@ -354,8 +361,7 @@ void commandHandler(void* args){
 }
 
 void clientHandler(int serverSocket, struct sockaddr_in addr, int addrlen){	//args contains: serverSocket, serverAddress, addressSize
-	struct sockaddr *serverAddr = (struct sockaddr*)&addr;	//*E*
-	//signal to end program incomplete	
+	struct sockaddr *serverAddr = (struct sockaddr*)&addr;	//*E*	
 	struct itimerval timer;
 	signal(SIGALRM, sighandler);
 	timer.it_value.tv_sec = 100;
@@ -363,8 +369,8 @@ void clientHandler(int serverSocket, struct sockaddr_in addr, int addrlen){	//ar
 	timer.it_value.tv_sec = 100;
 	timer.it_interval.tv_usec = 0;
 	setitimer(ITIMER_REAL, &timer, NULL);
-	//--------------------------------
 	int clientSocket;
+	pthread_mutex_init(&lock, NULL);
 	pthread_t threadID;
 	while(killFlag == 0){
 		if((clientSocket = accept(serverSocket, serverAddr, (socklen_t*)&addrlen)) < 0){	//*E*
@@ -391,6 +397,8 @@ void clientHandler(int serverSocket, struct sockaddr_in addr, int addrlen){	//ar
 		}
 	}
 	pthread_mutex_destroy(&lock);
+	pthread_detach(threadHead->threadID);
+	return;
 }
 
 int main(int argc, char** argv){
@@ -436,7 +444,6 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	printf("listening...\n");
-	pthread_mutex_init(&lock, NULL);
 	
 	clientHandler(serverSocket, serverAddr, addrlen);
 	return 0;

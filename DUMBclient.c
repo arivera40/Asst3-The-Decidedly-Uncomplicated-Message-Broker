@@ -26,7 +26,7 @@ void commands(int sockfd){
 		char serverCommands[1024] = {0};
 		char message[256] = {0};
 		
-		printf("Please type in command\n");
+		printf("Please type in command\n>");
 		scanf("%s", commandInput);
 
 		if(strcmp("quit", commandInput) == 0){
@@ -35,17 +35,23 @@ void commands(int sockfd){
 			work = 1;
 			
 		}else if(strcmp("create", commandInput) == 0){ // create message
-			printf("What is the name of the mailbox you want to create?\n");
-			read(0,mailboxName,sizeof(mailboxName));
+			printf("What is the name of the mailbox you want to create?\nopen>: ");
+			//read(0,mailboxName,sizeof(mailboxName));
+			scanf("%s",mailboxName);
 			strcpy(serverCommands, "CREAT!");
 			strcpy(&serverCommands[6], mailboxName);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(sockfd, 1);
 		}else if(strcmp("open", commandInput) == 0){ // open mailbox
-			printf("What is the name of the mailbox you want to open?\n");
-			read(0, mailboxName, sizeof(mailboxName));
+			//printf("open:>\n");
+			printf("Okay, open which message box?\n");
+			printf("open>: ");
+			//read(0, mailboxName, sizeof(mailboxName));
+			scanf("%s",mailboxName);
+			printf("%s\n", mailboxName);
 			strcpy(serverCommands, "OPNBX!");
 			strcpy(&serverCommands[6], mailboxName);
+			printf("%s\n", serverCommands);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(sockfd,2);
 		}else if(strcmp("next", commandInput) == 0){ // get next message
@@ -98,7 +104,7 @@ void commands(int sockfd){
 }
 
 void separateStrings(char* messagefromServer, int command){
-	char length[10] = {0};
+	char length[2000] = {0};
 	char message[2000] = {0};
 	//int size = strlen(messagefromServer);
 	int i;
@@ -108,7 +114,7 @@ void separateStrings(char* messagefromServer, int command){
 	for(i=3; i < strlen(messagefromServer); i++){
 		if(messagefromServer[i] == '!'){
 			printf("\n\nDoes it enter here?\n\n");
-			for(j=i; j < strlen(messagefromServer); j++){
+			for(j=i+1; j < strlen(messagefromServer); j++){
 				message[l] = messagefromServer[j];
 				l++;
 			}
@@ -120,7 +126,7 @@ void separateStrings(char* messagefromServer, int command){
 	}
 	length[k] = '\0';
 	if(command == 3){
-		printf("Okay, message of length %s says %s\n",  length, message);
+		printf("Okay, message of length %s says %s \n",  length, message);
 	}	//next
 	if(command == 4){
 		printf("Command successfully performed, message of length %s inserted\n", length);	//put
@@ -129,8 +135,8 @@ void separateStrings(char* messagefromServer, int command){
 }
 
 void checkError(int sock, int command){
-	char messagefromServer[10] = {0};
-	int msgLength = recv(sock, messagefromServer, 10, 0);
+	char messagefromServer[2000] = {0};
+	int msgLength = recv(sock, messagefromServer, 2000, 0);
 	messagefromServer[msgLength] = '\0';
 
 	if(messagefromServer[0] == 'O' && command == 3){

@@ -26,7 +26,7 @@ void commands(int sockfd){
 		char serverCommands[1024] = {0};
 		char message[256] = {0};
 		
-		printf("Please type in command\n>");
+		printf("Please type in command\n> ");
 		scanf("%s", commandInput);
 
 		if(strcmp("quit", commandInput) == 0){
@@ -36,22 +36,18 @@ void commands(int sockfd){
 			
 		}else if(strcmp("create", commandInput) == 0){ // create message
 			printf("What is the name of the mailbox you want to create?\n");
+			write(1, "create:> ", 9);
 			read(0,mailboxName,sizeof(mailboxName));
-			//scanf("%s",mailboxName);
 			strcpy(serverCommands, "CREAT!");
 			strcpy(&serverCommands[6], mailboxName);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(sockfd, 1);
 		}else if(strcmp("open", commandInput) == 0){ // open mailbox
-			//printf("open:>\n");
-			printf("Okay, open which message box?\n");
-			printf("open>: ");
+			printf("What is the name of the mailbox you want to open?\n");
+			write(1, "open:> ", 7);
 			read(0, mailboxName, sizeof(mailboxName));
-			//scanf("%s",mailboxName);
-			printf("%s\n", mailboxName);
 			strcpy(serverCommands, "OPNBX!");
 			strcpy(&serverCommands[6], mailboxName);
-			printf("%s\n", serverCommands);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(sockfd,2);
 		}else if(strcmp("next", commandInput) == 0){ // get next message
@@ -60,6 +56,7 @@ void commands(int sockfd){
 			checkError(sockfd, 3); //
 		}else if(strcmp("put", commandInput)== 0){ // put message
 			printf("What message do you want to put?\n");
+			write(1, "put:>", 6);
 			read(0, message, sizeof(message));
 			int sizeOfMessage = strlen(message)-1;
 			printf(message);
@@ -70,16 +67,14 @@ void commands(int sockfd){
 				j++;
 			}
 			number[j] = '!';
-			//include size of message
-			printf("%d\n", sizeOfMessage);
 			strcpy(serverCommands, "PUTMG!");
 			strcpy(&serverCommands[6],number);
 			strcpy(&serverCommands[6+strlen(number)], message);
-			printf(serverCommands);
 			send(sockfd, serverCommands, strlen(serverCommands), 0);
 			checkError(sockfd, 4);
 		}else if(strcmp("delete", commandInput) == 0){ // delete mailbox
 			printf("Which mailbox do you want to delete?\n");
+			write(1, "delete:> ", 9);
 			read(0, mailboxName, sizeof(mailboxName));
 			strcpy(serverCommands, "DELBX!");
 			strcpy(&serverCommands[6], mailboxName);
@@ -87,6 +82,7 @@ void commands(int sockfd){
 			checkError(sockfd, 5);
 		}else if(strcmp("close", commandInput) == 0){ //close mailbox
 			printf("Which mailbox do you want to close?\n");
+			write(1, "close:> ",8);
 			read(0, mailboxName, sizeof(mailboxName));
 			strcpy(serverCommands, "CLSBX!");
 			strcpy(&serverCommands[6], mailboxName);
@@ -104,16 +100,14 @@ void commands(int sockfd){
 }
 
 void separateStrings(char* messagefromServer, int command){
-	char length[2000] = {0};
+	char length[10] = {0};
 	char message[2000] = {0};
-	//int size = strlen(messagefromServer);
 	int i;
 	int j;
 	int k = 0;
 	int l = 0;
 	for(i=3; i < strlen(messagefromServer); i++){
 		if(messagefromServer[i] == '!'){
-			printf("\n\nDoes it enter here?\n\n");
 			for(j=i+1; j < strlen(messagefromServer); j++){
 				message[l] = messagefromServer[j];
 				l++;
@@ -126,7 +120,7 @@ void separateStrings(char* messagefromServer, int command){
 	}
 	length[k] = '\0';
 	if(command == 3){
-		printf("Okay, message of length %s says %s \n",  length, message);
+		printf("Okay, message of length %s says %s\n",  length, message);
 	}	//next
 	if(command == 4){
 		printf("Command successfully performed, message of length %s inserted\n", length);	//put

@@ -1,13 +1,10 @@
-all: DUMBserver DUMBclient
+all: client serve
 
-DUMBserver: DUMBserver.c
-	gcc -g -Wall -Werror -fsanitize=address -o DUMBserver
-DUMBserver.c -pthread -lrt
+client:
+	gcc -g -Wall -Werror -fsanitize=address -o DUMBclient DUMBclient.c -lpthread
 
-DUMBclient: DUMBclient.c
-	gcc -g -Wall -Werror -fsanitize=address -o DUMBclient
-DUMBclient.c -pthread -lrt
+serve:
+	gcc -g -Wall -Werror -fsanitize=address -o DUMBserve DUMBserver.c -lpthread
 
 clean:
-	rm DUMBclient
-	rm DUMBserver
+	rm DUMBclient rm DUMBserve
